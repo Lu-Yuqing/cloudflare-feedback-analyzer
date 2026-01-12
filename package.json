@@ -1,0 +1,21 @@
+{
+  "name": "feedback-aggregator",
+  "version": "1.0.0",
+  "description": "Feedback aggregation and analysis tool for Cloudflare",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create feedback-db",
+    "db:migrate": "wrangler d1 execute feedback-db --file=./schema.sql",
+    "db:seed": "wrangler d1 execute feedback-db --file=./seed.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.19.0"
+  },
+  "dependencies": {
+    "@cloudflare/ai": "^1.0.0"
+  }
+}

@@ -1,0 +1,22 @@
+name = "feedback-aggregator"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[env.production]
+name = "feedback-aggregator"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "feedback-db"
+database_id = "4c0fcb7a-c24f-4a9c-a563-8d37e05dfc3f"
+
+# Workers AI - accessed via env.AI in code
+# Note: Workers AI doesn't require a binding in wrangler.toml
+# It's automatically available when Workers AI is enabled in your account
+
+# Workflows
+[[workflows]]
+binding = "FEEDBACK_WORKFLOW"
+name = "feedback-processing-workflow"
+class_name = "FeedbackWorkflow"
