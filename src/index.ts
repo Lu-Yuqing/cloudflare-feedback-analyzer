@@ -592,20 +592,28 @@ function getHTML(): string {
                 
                 document.getElementById('totalFeedback').textContent = stats.total?.count || 0;
                 
-                const sentimentCounts = { POSITIVE: 0, NEGATIVE: 0, neutral: 0 };
+                const sentimentCounts = { POSITIVE: 0, NEGATIVE: 0, NEUTRAL: 0, neutral: 0 };
                 stats.bySentiment?.results?.forEach(item => {
-                    sentimentCounts[item.sentiment] = item.count;
+                    // Normalize sentiment to uppercase for consistent counting
+                    const normalizedSentiment = (item.sentiment || '').toUpperCase();
+                    if (normalizedSentiment === 'POSITIVE') {
+                        sentimentCounts.POSITIVE += item.count;
+                    } else if (normalizedSentiment === 'NEGATIVE') {
+                        sentimentCounts.NEGATIVE += item.count;
+                    } else if (normalizedSentiment === 'NEUTRAL') {
+                        sentimentCounts.NEUTRAL += item.count;
+                    }
                 });
                 
                 document.getElementById('positiveCount').textContent = sentimentCounts.POSITIVE || 0;
                 document.getElementById('negativeCount').textContent = sentimentCounts.NEGATIVE || 0;
-                document.getElementById('neutralCount').textContent = sentimentCounts.neutral || 0;
+                document.getElementById('neutralCount').textContent = (sentimentCounts.NEUTRAL || sentimentCounts.neutral || 0);
 
                 // Update sentiment chart
                 sentimentChart.data.datasets[0].data = [
                     sentimentCounts.POSITIVE,
                     sentimentCounts.NEGATIVE,
-                    sentimentCounts.neutral
+                    (sentimentCounts.NEUTRAL || sentimentCounts.neutral || 0)
                 ];
                 sentimentChart.update();
 
