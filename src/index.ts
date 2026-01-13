@@ -168,15 +168,25 @@ async function handlePostFeedback(request: Request, env: Env, ctx: ExecutionCont
   const feedbackId = result.meta.last_row_id;
 
   // Trigger Cloudflare Workflow for async processing
+  // Use unique ID with timestamp to avoid conflicts on retries
   try {
+    const workflowId = `feedback-${feedbackId}-${Date.now()}`;
+    const workflowParams = { feedbackId: feedbackId };
+    console.log(`Creating workflow with ID: ${workflowId}, params:`, JSON.stringify(workflowParams));
     await env.FEEDBACK_WORKFLOW.create({
-      id: `feedback-${feedbackId}`,
-      params: { feedbackId },
+      id: workflowId,
+      params: workflowParams,
     });
-  } catch (error) {
-    console.error('Failed to create workflow:', error);
-    // Fallback to direct processing if workflow fails
-    ctx.waitUntil(processFeedbackWithAI(env, feedbackId));
+    console.log(`Workflow created successfully for feedback ${feedbackId}`);
+  } catch (error: any) {
+    console.error(`Failed to create workflow for feedback ${feedbackId}:`, error);
+    // Check if it's an "already exists" error - if so, that's OK, workflow is already running
+    if (error?.message?.includes('already_exists') || error?.message?.includes('already exists')) {
+      console.log(`Workflow already exists for feedback ${feedbackId}, skipping`);
+    } else {
+      // For other errors, fallback to direct processing
+      ctx.waitUntil(processFeedbackWithAI(env, feedbackId));
+    }
   }
 
   return new Response(JSON.stringify({ id: feedbackId, success: true }), {
@@ -293,14 +303,27 @@ async function handleProcessPending(env: Env): Promise<Response> {
     .all<{ id: number }>();
 
   // Use workflows for processing
+  // Use unique IDs with timestamps to avoid conflicts on retries
   const workflowPromises = pending.results.map((item) => {
+    const workflowId = `feedback-${item.id}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const workflowParams = { feedbackId: item.id };
+    console.log(`Creating workflow with ID: ${workflowId}, params:`, JSON.stringify(workflowParams));
     return env.FEEDBACK_WORKFLOW.create({
-      id: `feedback-${item.id}`,
-      params: { feedbackId: item.id },
-    }).catch((error) => {
+      id: workflowId,
+      params: workflowParams,
+    }).then(() => {
+      console.log(`Workflow created successfully for feedback ${item.id}`);
+      return Promise.resolve();
+    }).catch((error: any) => {
       console.error(`Failed to create workflow for feedback ${item.id}:`, error);
-      // Fallback to direct processing if workflow fails
-      return processFeedbackWithAI(env, item.id);
+      // Check if it's an "already exists" error - if so, that's OK, workflow is already running
+      if (error?.message?.includes('already_exists') || error?.message?.includes('already exists')) {
+        console.log(`Workflow already exists for feedback ${item.id}, skipping`);
+        return Promise.resolve(); // Don't fallback, workflow is already processing
+      } else {
+        // For other errors, fallback to direct processing
+        return processFeedbackWithAI(env, item.id);
+      }
     });
   });
 
